@@ -21,6 +21,13 @@
   input:focus, button:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
 
   header { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo-chip { background: var(--navy); border-radius: 10px; padding: 8px 16px; box-shadow: 0 2px 8px rgba(11,60,93,.10); }
+  .logo-chip img { height: 46px; display: block; }
+  #watermark { position: fixed; right: -30px; bottom: -20px; width: min(65vw, 760px); opacity: .05; pointer-events: none; z-index: 6; }
+  .filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+  .filter-bar input[type=date] { padding: 5px 8px; font-size: 12.5px; }
+  .ghost-btn { padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-family: Inter, sans-serif; }
   h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 34px; font-weight: 700; letter-spacing: .04em; color: var(--navy); margin: 0; line-height: 1; }
   .sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
   .status { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; font-weight: 600; }
@@ -56,7 +63,7 @@
   .legend .meta-dash { width: 18px; border-top: 2px dashed var(--red); }
 
   #chart-wrap { position: relative; width: 100%; height: 300px; }
-  #chart-tip {
+  #chart-tip, #chart-month-tip {
     position: absolute; display: none; pointer-events: none; z-index: 10;
     background: #fff; border: 1px solid var(--line); border-radius: 8px;
     padding: 10px 12px; box-shadow: 0 4px 14px rgba(11,60,93,.15);
@@ -91,11 +98,19 @@
   tbody tr { border-top: 1px solid var(--line); }
   .meta-ok { color: #1E7B4F; font-weight: 600; } .meta-below { color: var(--red); }
 
-  #pin-overlay {
+  #login-overlay {
     position: fixed; inset: 0; background: var(--bg); z-index: 100;
     display: flex; align-items: center; justify-content: center;
   }
-  #pin-overlay .box { background: var(--card); border-radius: 12px; padding: 28px; box-shadow: 0 4px 20px rgba(11,60,93,.18); width: 320px; text-align: center; }
+  #login-overlay .box { background: var(--card); border-radius: 12px; padding: 28px; box-shadow: 0 4px 20px rgba(11,60,93,.18); width: 330px; text-align: center; }
+  #login-overlay select, #login-overlay input {
+    width: 100%; padding: 9px 10px; font-size: 14px; border: 1px solid var(--line);
+    border-radius: 8px; font-family: Inter, sans-serif; color: var(--ink); background: #FBFDFE;
+  }
+  .edit-btn { padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--deep); background: transparent; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; font-family: Inter, sans-serif; }
+  #user-box { gap: 10px; }
+  #user-label { font-size: 12.5px; font-weight: 600; }
+  #user-label .role { color: var(--muted); font-weight: 400; }
 </style>
 </head>
 <body>
@@ -107,30 +122,54 @@
 <script>
   const SUPABASE_URL = "https://nytpnjtyvemrrotqewxq.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dHBuanR5dmVtcnJvdHFld3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMzQ0OTYsImV4cCI6MjA5ODYxMDQ5Nn0.vcp3uGHqi5tSq8kN_Z8O9kGlaz4VBsOV-Zds2Ic0o2w";
-  const ACCESS_PIN   = "";  // opcional: código de acesso (ex.: "ituram50"). Vazio = sem senha.
   const META = 50;          // meta diária de motos
+  // Perfis de acesso — os usuários e senhas são criados no Supabase (Authentication → Users).
+  // Aqui fica apenas o mapeamento perfil → e-mail; nenhuma senha fica neste arquivo.
+  const USERS = {
+    adm:       { email: "adm@ituram.app",       label: "Administrador" },
+    armazem:   { email: "armazem@ituram.app",   label: "Armazém" },
+    visitante: { email: "visitante@ituram.app", label: "Visitante" },
+  };
 </script>
 
-<div id="pin-overlay" style="display:none">
+<div id="login-overlay" style="display:none">
   <div class="box">
     <h1 style="font-size:26px">PRODUÇÃO ITURAM</h1>
-    <p style="font-size:13px;color:var(--muted)">Informe o código de acesso para abrir o painel.</p>
-    <input type="text" id="pin-input" placeholder="Código de acesso" style="width:100%;padding:9px 10px;font-size:14px;border:1px solid var(--line);border-radius:8px">
-    <button class="primary-btn" id="pin-btn" style="width:100%;margin-top:10px">Entrar</button>
-    <div id="pin-error" class="msg-error" style="display:none;margin-top:10px">Código incorreto.</div>
+    <p style="font-size:13px;color:var(--muted)">Identifique-se para abrir o painel.</p>
+    <label class="f-label" style="text-align:left;margin-bottom:10px">Perfil
+      <select id="login-perfil">
+        <option value="armazem">Armazém — lança a produção</option>
+        <option value="adm">Administrador — lança, edita e exclui</option>
+        <option value="visitante">Visitante — apenas consulta</option>
+      </select>
+    </label>
+    <label class="f-label" style="text-align:left">Senha
+      <input type="password" id="login-senha" placeholder="Senha do perfil" autocomplete="current-password">
+    </label>
+    <button class="primary-btn" id="login-btn" style="width:100%;margin-top:12px">Entrar</button>
+    <div id="login-error" class="msg-error" style="display:none;margin-top:10px"></div>
   </div>
 </div>
 
 <header>
-  <div>
-    <h1>PRODUÇÃO ITURAM</h1>
-    <div class="sub" id="subtitle">Painel de produção diária</div>
-    <div class="status" id="status"><span class="dot"></span><span id="status-text"></span></div>
+  <div class="brand">
+    <div class="logo-chip"><img src="data:image/png;base64,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" alt="Ituran"></div>
+    <div>
+      <h1>PRODUÇÃO ITURAM</h1>
+      <div class="sub" id="subtitle">Painel de produção diária</div>
+      <div class="status" id="status"><span class="dot"></span><span id="status-text"></span></div>
+    </div>
   </div>
-  <div class="meta-box">
-    <span class="meta-label">Meta diária</span>
-    <span class="meta-value" id="meta-value">50</span>
-    <span class="meta-unit">motos</span>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="meta-box">
+      <span class="meta-label">Meta diária</span>
+      <span class="meta-value" id="meta-value">50</span>
+      <span class="meta-unit">motos</span>
+    </div>
+    <div class="meta-box" id="user-box" style="display:none">
+      <span id="user-label"></span>
+      <button type="button" class="ghost-btn" id="logout-btn">Sair</button>
+    </div>
   </div>
 </header>
 
@@ -153,6 +192,13 @@
         <span class="item"><span class="meta-dash"></span>Meta (<span id="legend-meta">50</span>)</span>
       </div>
     </div>
+    <div class="filter-bar">
+      <span>Período:</span>
+      <input type="date" id="filtro-ini" aria-label="Data inicial do filtro">
+      <span>até</span>
+      <input type="date" id="filtro-fim" aria-label="Data final do filtro">
+      <button type="button" class="ghost-btn" id="filtro-limpar">Limpar</button>
+    </div>
     <div id="chart-wrap">
       <svg id="chart" width="100%" height="300"></svg>
       <div id="chart-tip"></div>
@@ -161,7 +207,8 @@
   </section>
 
   <section class="panel">
-    <h2 style="margin-bottom:10px">Lançar produção do dia</h2>
+    <div id="form-area">
+    <h2 style="margin-bottom:10px" id="form-title">Lançar produção do dia</h2>
     <form id="form" onsubmit="return false">
       <label class="f-label">Data
         <input type="date" id="f-data">
@@ -183,6 +230,7 @@
       <div class="msg-error" id="form-error" style="display:none"></div>
       <div class="msg-flash" id="form-flash" style="display:none"></div>
     </form>
+    </div>
 
     <div style="margin-top:18px">
       <h3>Comparativo por equipe</h3>
@@ -193,6 +241,21 @@
 
 <section class="panel" style="margin-top:14px">
   <div class="panel-head">
+    <h2>Produção mensal</h2>
+    <div class="legend">
+      <span class="item"><span class="swatch" style="background:var(--deep)"></span>Equipe A</span>
+      <span class="item"><span class="swatch" style="background:var(--teal)"></span>Equipe B</span>
+    </div>
+  </div>
+  <div id="chart-month-wrap" style="position:relative;width:100%;height:230px">
+    <svg id="chart-month" width="100%" height="230"></svg>
+    <div id="chart-month-tip"></div>
+  </div>
+  <div class="hint">Total de motos por mês (passe o cursor sobre a barra para ver o detalhe)</div>
+</section>
+
+<section class="panel" style="margin-top:14px">
+  <div class="panel-head">
     <h2 id="table-title">Lançamentos</h2>
   </div>
   <div style="overflow-x:auto">
@@ -200,16 +263,31 @@
       <thead>
         <tr>
           <th>Data</th><th>Dia da semana</th><th>Equipe</th>
-          <th style="text-align:right">Motos</th><th>Meta</th><th>Observação</th><th></th>
+          <th style="text-align:right">Motos</th><th>Meta</th><th>Observação</th><th id="th-acoes"></th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
     </table>
   </div>
   <div class="hint" style="margin-top:10px" id="share-note">
-    Os dados são compartilhados: qualquer pessoa com acesso a este painel vê e edita os mesmos lançamentos.
+    Os dados são compartilhados entre todos. Perfis: Administrador lança, edita e exclui · Armazém lança · Visitante consulta.
   </div>
 </section>
+
+<svg id="watermark" viewBox="0 0 640 400" aria-hidden="true">
+  <g fill="#0B3C5D">
+    <circle cx="150" cy="298" r="72" fill="none" stroke="#0B3C5D" stroke-width="26"/>
+    <circle cx="150" cy="298" r="20"/>
+    <circle cx="497" cy="298" r="72" fill="none" stroke="#0B3C5D" stroke-width="26"/>
+    <circle cx="497" cy="298" r="20"/>
+    <path d="M150 290 L272 260 L284 288 L156 312 Z"/>
+    <path d="M460 166 L512 288 L492 296 L442 174 Z"/>
+    <path d="M88 168 Q160 178 210 212 Q235 214 252 206 Q290 170 340 164 L446 158 Q520 170 556 206 Q562 216 550 220 L520 218 Q530 252 492 264 L432 270 Q392 286 336 282 Q300 272 262 258 L172 244 Q120 236 100 206 Z"/>
+    <path d="M446 156 L488 112 L500 122 L462 162 Z"/>
+    <path d="M300 292 L396 302 Q410 309 396 318 L306 314 Z"/>
+    <path d="M88 168 L54 156 Q46 152 54 146 L118 158 Z"/>
+  </g>
+</svg>
 
 <script>
 "use strict";
@@ -235,6 +313,69 @@ const weekday = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR",
 const longDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// ---------- Autenticação (Supabase Auth) ----------
+const SESSION_KEY = "ituram-sessao";
+let session = null; // { access_token, refresh_token, expires_at, email }
+let ROLE = null;    // "adm" | "armazem" | "visitante"
+
+function roleFromEmail(email) {
+  for (const [role, u] of Object.entries(USERS)) if (u.email === email) return role;
+  return "visitante"; // qualquer outro usuário criado no Supabase entra como consulta
+}
+
+function saveSession(data) {
+  session = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at: data.expires_at || Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
+    email: (data.user && data.user.email) || (session && session.email),
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function clearSession() {
+  session = null; ROLE = null;
+  localStorage.removeItem(SESSION_KEY);
+}
+
+async function ensureSession() {
+  if (!session) throw new Error("Sessão expirada");
+  const now = Math.floor(Date.now() / 1000);
+  if (session.expires_at - 60 > now) return;
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: session.refresh_token }),
+  });
+  if (!res.ok) { clearSession(); location.reload(); throw new Error("Sessão expirada"); }
+  saveSession(await res.json());
+}
+
+async function authFetch(url, opts = {}) {
+  await ensureSession();
+  opts.headers = Object.assign(
+    { apikey: SUPABASE_KEY, Authorization: `Bearer ${session.access_token}` },
+    opts.headers || {}
+  );
+  return fetch(url, opts);
+}
+
+async function doLogin(perfil, senha) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: USERS[perfil].email, password: senha }),
+  });
+  if (!res.ok) {
+    let msg = "Senha incorreta para este perfil.";
+    try { const j = await res.json(); if (j.error_description || j.msg) msg = "Não foi possível entrar: " + (j.error_description || j.msg); } catch {}
+    if (res.status === 400) msg = "Senha incorreta para este perfil.";
+    throw new Error(msg);
+  }
+  saveSession(await res.json());
+  ROLE = roleFromEmail(session.email);
+}
+
 // ---------- Camada de dados ----------
 async function apiList() {
   if (!CONNECTED) {
@@ -243,9 +384,7 @@ async function apiList() {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(SEED));
     return SEED.slice();
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/producao?select=data,equipe,prod,obs&order=data.asc`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  });
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/producao?select=data,equipe,prod,obs&order=data.asc`);
   if (!res.ok) throw new Error(`Erro ${res.status} ao carregar dados`);
   return res.json();
 }
@@ -258,14 +397,14 @@ async function apiUpsert(entry) {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
     return;
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/producao`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json", Prefer: "resolution=merge-duplicates",
-    },
-    body: JSON.stringify([entry]),
+  // Administrador pode substituir um dia já lançado; os demais perfis apenas inserem.
+  const headers = { "Content-Type": "application/json" };
+  if (ROLE === "adm") headers.Prefer = "resolution=merge-duplicates";
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/producao`, {
+    method: "POST", headers, body: JSON.stringify([entry]),
   });
+  if (res.status === 409) throw new Error("JA_EXISTE");
+  if (res.status === 401 || res.status === 403) throw new Error("SEM_PERMISSAO");
   if (!res.ok) throw new Error(`Erro ${res.status} ao salvar`);
 }
 
@@ -275,16 +414,21 @@ async function apiDelete(data) {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
     return;
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/producao?data=eq.${data}`, {
-    method: "DELETE",
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  });
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/producao?data=eq.${data}`, { method: "DELETE" });
+  if (res.status === 401 || res.status === 403) throw new Error("SEM_PERMISSAO");
   if (!res.ok) throw new Error(`Erro ${res.status} ao excluir`);
 }
 
 // ---------- Estado ----------
 let entries = [];
 let fEquipe = "A";
+
+// Lançamentos dentro do período filtrado (KPIs, gráfico diário e comparativo)
+function viewEntries() {
+  const ini = $("filtro-ini").value, fim = $("filtro-fim").value;
+  return entries.filter((e) => (!ini || e.data >= ini) && (!fim || e.data <= fim));
+}
+function filtroAtivo() { return Boolean($("filtro-ini").value || $("filtro-fim").value); }
 
 function setStatus(kind, text) {
   const el = $("status");
@@ -297,7 +441,7 @@ async function refresh({ silent = false } = {}) {
     entries = await apiList();
     entries.sort((a, b) => a.data.localeCompare(b.data));
     renderAll();
-    if (CONNECTED) setStatus("online", "Conectado — dados compartilhados com a equipe");
+    if (CONNECTED) setStatus("online", `Conectado como ${USERS[ROLE] ? USERS[ROLE].label : "Visitante"} — dados compartilhados`);
     else {
       setStatus("demo", "Modo demonstração — dados salvos só neste navegador");
       const b = $("banner");
@@ -315,29 +459,31 @@ async function refresh({ silent = false } = {}) {
   }
 }
 
-// ---------- Indicadores ----------
+// ---------- Indicadores (respeitam o filtro de período) ----------
 function calcIndicators() {
-  const total = entries.reduce((s, e) => s + e.prod, 0);
-  const worked = entries.filter((e) => e.prod > 0);
+  const list = viewEntries();
+  const total = list.reduce((s, e) => s + e.prod, 0);
+  const worked = list.filter((e) => e.prod > 0);
   const media = worked.length ? total / worked.length : 0;
-  const best = entries.reduce((b, e) => (e.prod > (b ? b.prod : -1) ? e : b), null);
-  const acima = entries.filter((e) => e.prod >= META).length;
+  const best = list.reduce((b, e) => (e.prod > (b ? b.prod : -1) ? e : b), null);
+  const acima = list.filter((e) => e.prod >= META).length;
   const porEquipe = ["A", "B"].map((eq) => {
-    const sub = entries.filter((e) => e.equipe === eq);
+    const sub = list.filter((e) => e.equipe === eq);
     const subW = sub.filter((e) => e.prod > 0);
     const t = sub.reduce((s, e) => s + e.prod, 0);
     return { eq, total: t, dias: sub.length, media: subW.length ? t / subW.length : 0 };
   });
-  const periodo = entries.length
-    ? `${longDate(entries[0].data)} a ${longDate(entries[entries.length - 1].data)} de ${entries[entries.length - 1].data.slice(0, 4)}`
+  const periodo = list.length
+    ? `${longDate(list[0].data)} a ${longDate(list[list.length - 1].data)} de ${list[list.length - 1].data.slice(0, 4)}`
     : "sem lançamentos";
-  return { total, media, best, acima, porEquipe, periodo, dias: entries.length };
+  return { total, media, best, acima, porEquipe, periodo, dias: list.length };
 }
 
 // ---------- Renderização ----------
 function renderAll() {
   const c = calcIndicators();
-  $("subtitle").textContent = `Painel de produção diária · ${c.periodo} · ${c.dias} dias lançados`;
+  const sufixo = filtroAtivo() ? " (período filtrado)" : "";
+  $("subtitle").textContent = `Painel de produção diária · ${c.periodo} · ${c.dias} dias lançados${sufixo}`;
   $("meta-value").textContent = META;
   $("legend-meta").textContent = META;
 
@@ -358,9 +504,12 @@ function renderAll() {
 
   renderTable();
   renderChart();
+  renderMonthChart();
 }
 
 function renderTable() {
+  const isAdm = ROLE === "adm";
+  $("th-acoes").style.display = isAdm ? "" : "none";
   const rows = entries.slice().reverse().map((e) => `
     <tr>
       <td>${longDate(e.data)}</td>
@@ -369,30 +518,37 @@ function renderTable() {
       <td style="text-align:right;font-weight:600">${fmtBR(e.prod)}</td>
       <td>${e.prod >= META ? '<span class="meta-ok">✓ atingida</span>' : '<span class="meta-below">abaixo</span>'}</td>
       <td style="color:var(--muted);font-style:${e.obs ? "italic" : "normal"}">${e.obs ? esc(e.obs) : "—"}</td>
-      <td style="text-align:right"><button class="delete-btn" data-del="${e.data}">Excluir</button></td>
+      ${isAdm ? `<td style="text-align:right;white-space:nowrap">
+        <button class="edit-btn" data-edit="${e.data}">Editar</button>
+        <button class="delete-btn" data-del="${e.data}">Excluir</button>
+      </td>` : ""}
     </tr>`).join("");
   $("table-body").innerHTML = rows || `
-    <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:24px">
-      Nenhum lançamento ainda. Use o formulário acima para registrar a produção do dia.
+    <tr><td colspan="${isAdm ? 7 : 6}" style="color:var(--muted);text-align:center;padding:24px">
+      Nenhum lançamento ainda.
     </td></tr>`;
   $("table-title").textContent = `Lançamentos (${entries.length})`;
 }
 
-// ---------- Gráfico (SVG) ----------
+// ---------- Gráfico diário (SVG) ----------
 function renderChart() {
   const svg = $("chart");
   const wrap = $("chart-wrap");
+  const list = viewEntries();
   const W = wrap.clientWidth || 600, H = 300;
-  const m = { top: 18, right: 8, bottom: 48, left: 34 };
+  const m = { top: 26, right: 8, bottom: 48, left: 8 };
   const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 
-  if (!entries.length) { svg.innerHTML = ""; return; }
+  if (!list.length) {
+    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="#5B6B76">Nenhum lançamento no período selecionado.</text>`;
+    return;
+  }
 
-  const maxProd = Math.max(...entries.map((e) => e.prod));
+  const maxProd = Math.max(...list.map((e) => e.prod));
   const yMax = Math.max(100, Math.ceil(maxProd / 10) * 10);
   const y = (v) => m.top + plotH - (v / yMax) * plotH;
-  const n = entries.length;
+  const n = list.length;
   const slot = plotW / n;
   const barW = Math.min(26, slot * 0.72);
   const xC = (i) => m.left + slot * i + slot / 2;
@@ -401,7 +557,7 @@ function renderChart() {
 
   // Faixas de fundo (blocos da equipe B)
   let blockStart = null;
-  entries.forEach((e, i) => {
+  list.forEach((e, i) => {
     if (e.equipe === "B" && blockStart === null) blockStart = i;
     const endOfBlock = blockStart !== null && (e.equipe !== "B" || i === n - 1);
     if (endOfBlock) {
@@ -411,19 +567,17 @@ function renderChart() {
     }
   });
 
-  // Grade e eixo Y
-  const step = Math.max(10, Math.ceil(yMax / 5 / 10) * 10);
-  for (let v = 0; v <= yMax; v += step) {
-    out += `<line x1="${m.left}" x2="${W - m.right}" y1="${y(v)}" y2="${y(v)}" stroke="#D8E2EA"/>`;
-    out += `<text x="${m.left - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="#5B6B76">${v}</text>`;
-  }
+  // Linha de base
+  out += `<line x1="${m.left}" x2="${W - m.right}" y1="${m.top + plotH}" y2="${m.top + plotH}" stroke="#D8E2EA"/>`;
 
-  // Barras + rótulos + marcador de observação
-  entries.forEach((e, i) => {
+  // Barras + rótulo de dados + marcador de observação
+  const labelSize = n > 40 ? 8 : 9.5;
+  list.forEach((e, i) => {
     const bx = xC(i) - barW / 2, by = y(e.prod), bh = m.top + plotH - by;
     const color = e.equipe === "A" ? "#065A82" : "#1C7293";
     out += `<path d="M${bx},${by + 3} q0,-3 3,-3 h${barW - 6} q3,0 3,3 v${Math.max(bh - 3, 0)} h${-barW} z" fill="${color}" data-i="${i}" class="bar" style="cursor:pointer"/>`;
-    if (e.obs) out += `<text x="${xC(i)}" y="${by - 6}" text-anchor="middle" font-size="9" fill="#E8A33D">◆</text>`;
+    out += `<text x="${xC(i)}" y="${by - 5}" text-anchor="middle" font-size="${labelSize}" font-weight="600" fill="#1E2A32">${e.prod}</text>`;
+    if (e.obs) out += `<text x="${xC(i)}" y="${by - 16}" text-anchor="middle" font-size="9" fill="#E8A33D">◆</text>`;
     out += `<text x="${xC(i)}" y="${m.top + plotH + 8}" text-anchor="end" font-size="9" fill="#5B6B76" transform="rotate(-90 ${xC(i)} ${m.top + plotH + 8})">${shortDate(e.data)}</text>`;
   });
 
@@ -436,7 +590,7 @@ function renderChart() {
   const tip = $("chart-tip");
   svg.querySelectorAll(".bar").forEach((bar) => {
     bar.addEventListener("mouseenter", () => {
-      const e = entries[Number(bar.dataset.i)];
+      const e = list[Number(bar.dataset.i)];
       tip.innerHTML = `
         <div style="font-weight:700">${longDate(e.data)} · <span style="text-transform:capitalize">${weekday(e.data)}</span></div>
         <div style="margin-top:4px">Equipe ${e.equipe} — <b>${fmtBR(e.prod)} motos</b>
@@ -454,6 +608,80 @@ function renderChart() {
   });
 }
 
+// ---------- Gráfico mensal (SVG, barras empilhadas por equipe) ----------
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function renderMonthChart() {
+  const svg = $("chart-month");
+  const wrap = $("chart-month-wrap");
+  const W = wrap.clientWidth || 600, H = 230;
+  const m = { top: 30, right: 8, bottom: 24, left: 8 };
+  const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+  if (!entries.length) { svg.innerHTML = ""; return; }
+
+  const groups = {};
+  entries.forEach((e) => {
+    const k = e.data.slice(0, 7); // AAAA-MM
+    if (!groups[k]) groups[k] = { A: 0, B: 0, dias: 0, trab: 0 };
+    groups[k][e.equipe] += e.prod;
+    groups[k].dias += 1;
+    if (e.prod > 0) groups[k].trab += 1;
+  });
+  const keys = Object.keys(groups).sort();
+  const months = keys.map((k) => {
+    const g = groups[k];
+    const [ano, mes] = k.split("-");
+    return { k, ...g, total: g.A + g.B, label: `${MESES[Number(mes) - 1]}/${ano.slice(2)}` };
+  });
+
+  const yMax = Math.max(...months.map((x) => x.total)) || 1;
+  const scale = (v) => (v / yMax) * (plotH - 14); // 14px de folga p/ o rótulo
+  const slot = plotW / months.length;
+  const barW = Math.min(90, slot * 0.55);
+
+  let out = `<line x1="${m.left}" x2="${W - m.right}" y1="${m.top + plotH}" y2="${m.top + plotH}" stroke="#D8E2EA"/>`;
+  months.forEach((mo, i) => {
+    const xc = m.left + slot * i + slot / 2;
+    const base = m.top + plotH;
+    const hA = scale(mo.A), hB = scale(mo.B);
+    if (hA > 0) out += `<rect x="${xc - barW / 2}" y="${base - hA}" width="${barW}" height="${hA}" fill="#065A82" rx="3" data-i="${i}" class="mbar" style="cursor:pointer"/>`;
+    if (hB > 0) out += `<rect x="${xc - barW / 2}" y="${base - hA - hB}" width="${barW}" height="${hB}" fill="#1C7293" rx="3" data-i="${i}" class="mbar" style="cursor:pointer"/>`;
+    out += `<text x="${xc}" y="${base - hA - hB - 7}" text-anchor="middle" font-size="13" font-weight="700" fill="#0B3C5D">${fmtBR(mo.total)}</text>`;
+    out += `<text x="${xc}" y="${base + 16}" text-anchor="middle" font-size="11" fill="#5B6B76">${mo.label}</text>`;
+  });
+
+  svg.innerHTML = out;
+
+  const tip = $("chart-month-tip");
+  svg.querySelectorAll(".mbar").forEach((bar) => {
+    bar.addEventListener("mouseenter", () => {
+      const mo = months[Number(bar.dataset.i)];
+      tip.innerHTML = `
+        <div style="font-weight:700;text-transform:capitalize">${mo.label}</div>
+        <div style="margin-top:4px"><b>${fmtBR(mo.total)} motos</b> em ${mo.dias} dias lançados</div>
+        <div style="margin-top:2px">Equipe A: ${fmtBR(mo.A)} · Equipe B: ${fmtBR(mo.B)}</div>
+        <div style="margin-top:2px;color:#5B6B76">média ${fmtBR(mo.trab ? mo.total / mo.trab : 0, 1)}/dia trabalhado</div>`;
+      tip.style.display = "block";
+      const r = bar.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      let left = r.left - wr.left + r.width / 2 + 10;
+      if (left + 230 > wr.width) left = r.left - wr.left - 240;
+      tip.style.left = Math.max(0, left) + "px";
+      tip.style.top = Math.max(0, r.top - wr.top - 10) + "px";
+    });
+    bar.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  });
+}
+
+// ---------- Filtro de período ----------
+$("filtro-ini").addEventListener("input", renderAll);
+$("filtro-fim").addEventListener("input", renderAll);
+$("filtro-limpar").addEventListener("click", () => {
+  $("filtro-ini").value = ""; $("filtro-fim").value = "";
+  renderAll();
+});
+
 // ---------- Formulário ----------
 function setEquipe(eq) {
   fEquipe = eq;
@@ -467,7 +695,11 @@ $("f-data").addEventListener("input", () => {
   const d = $("f-data").value;
   if (!d) { $("weekday-hint").textContent = ""; return; }
   let txt = weekday(d);
-  if (entries.some((e) => e.data === d)) txt += " — já existe lançamento nesta data; salvar irá substituí-lo.";
+  if (entries.some((e) => e.data === d)) {
+    txt += ROLE === "adm"
+      ? " — já existe lançamento nesta data; salvar irá substituí-lo."
+      : " — já existe lançamento nesta data; apenas o administrador pode alterá-lo.";
+  }
   $("weekday-hint").textContent = txt;
 });
 
@@ -489,6 +721,10 @@ $("save-btn").addEventListener("click", async () => {
     return;
   }
   const existed = entries.some((e) => e.data === data);
+  if (existed && ROLE !== "adm") {
+    showFormMsg("form-error", `Já existe lançamento em ${longDate(data)}. Apenas o administrador pode alterá-lo.`);
+    return;
+  }
   const btn = $("save-btn");
   btn.disabled = true; btn.textContent = "Salvando…";
   try {
@@ -499,13 +735,33 @@ $("save-btn").addEventListener("click", async () => {
       : `Produção de ${longDate(data)} registrada: ${qtd} motos.`);
     $("f-prod").value = ""; $("f-obs").value = ""; $("weekday-hint").textContent = "";
   } catch (err) {
-    showFormMsg("form-error", "Não foi possível salvar. Verifique a conexão e tente novamente.");
+    if (err.message === "JA_EXISTE") {
+      showFormMsg("form-error", `Já existe lançamento em ${longDate(data)}. Apenas o administrador pode alterá-lo.`);
+    } else if (err.message === "SEM_PERMISSAO") {
+      showFormMsg("form-error", "Seu perfil não tem permissão para esta ação.");
+    } else {
+      showFormMsg("form-error", "Não foi possível salvar. Verifique a conexão e tente novamente.");
+    }
   } finally {
     btn.disabled = false; btn.textContent = "Salvar produção";
   }
 });
 
 document.addEventListener("click", async (ev) => {
+  const editBtn = ev.target.closest("[data-edit]");
+  if (editBtn) {
+    // Administrador: carrega o dia no formulário para editar
+    const e = entries.find((x) => x.data === editBtn.dataset.edit);
+    if (!e) return;
+    $("f-data").value = e.data;
+    setEquipe(e.equipe);
+    $("f-prod").value = e.prod;
+    $("f-obs").value = e.obs || "";
+    $("weekday-hint").textContent = `${weekday(e.data)} — editando lançamento existente; salvar irá substituí-lo.`;
+    $("form-area").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("f-prod").focus();
+    return;
+  }
   const btn = ev.target.closest("[data-del]");
   if (!btn) return;
   const data = btn.dataset.del;
@@ -514,34 +770,71 @@ document.addEventListener("click", async (ev) => {
     await apiDelete(data);
     await refresh({ silent: true });
     showFormMsg("form-flash", `Lançamento de ${longDate(data)} excluído.`);
-  } catch {
-    showFormMsg("form-error", "Não foi possível excluir. Tente novamente.");
+  } catch (err) {
+    showFormMsg("form-error", err.message === "SEM_PERMISSAO"
+      ? "Seu perfil não tem permissão para excluir."
+      : "Não foi possível excluir. Tente novamente.");
   }
 });
 
-// ---------- Código de acesso (opcional) ----------
-function initPin() {
-  if (!ACCESS_PIN || sessionStorage.getItem("ituram-pin-ok") === "1") return;
-  const overlay = $("pin-overlay");
-  overlay.style.display = "flex";
-  const tryPin = () => {
-    if ($("pin-input").value.trim() === ACCESS_PIN) {
-      sessionStorage.setItem("ituram-pin-ok", "1");
-      overlay.style.display = "none";
-    } else {
-      $("pin-error").style.display = "block";
-    }
-  };
-  $("pin-btn").addEventListener("click", tryPin);
-  $("pin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") tryPin(); });
+// ---------- Login / perfis ----------
+function applyRoleUI() {
+  if (CONNECTED) {
+    $("user-box").style.display = "flex";
+    $("user-label").innerHTML = `${USERS[ROLE] ? USERS[ROLE].label : "Visitante"}`;
+  }
+  $("form-area").style.display = ROLE === "visitante" ? "none" : "";
 }
 
+function startApp() {
+  applyRoleUI();
+  refresh();
+  window.addEventListener("resize", () => { renderChart(); renderMonthChart(); });
+  window.addEventListener("focus", () => refresh({ silent: true }));
+  if (CONNECTED) setInterval(() => refresh({ silent: true }), 60000);
+}
+
+function showLogin() {
+  $("login-overlay").style.display = "flex";
+  const tryLogin = async () => {
+    $("login-error").style.display = "none";
+    const btn = $("login-btn");
+    btn.disabled = true; btn.textContent = "Entrando…";
+    try {
+      await doLogin($("login-perfil").value, $("login-senha").value);
+      $("login-overlay").style.display = "none";
+      startApp();
+    } catch (err) {
+      $("login-error").textContent = err.message;
+      $("login-error").style.display = "block";
+    } finally {
+      btn.disabled = false; btn.textContent = "Entrar";
+    }
+  };
+  $("login-btn").addEventListener("click", tryLogin);
+  $("login-senha").addEventListener("keydown", (e) => { if (e.key === "Enter") tryLogin(); });
+}
+
+$("logout-btn").addEventListener("click", () => {
+  clearSession();
+  location.reload();
+});
+
 // ---------- Inicialização ----------
-initPin();
-refresh();
-window.addEventListener("resize", renderChart);
-window.addEventListener("focus", () => refresh({ silent: true }));
-if (CONNECTED) setInterval(() => refresh({ silent: true }), 60000);
+(async () => {
+  if (!CONNECTED) { ROLE = "adm"; startApp(); return; } // modo demonstração: acesso total
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      session = JSON.parse(raw);
+      await ensureSession();
+      ROLE = roleFromEmail(session.email);
+      startApp();
+      return;
+    }
+  } catch { clearSession(); }
+  showLogin();
+})();
 </script>
 </body>
 </html>
