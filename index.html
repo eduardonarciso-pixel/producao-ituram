@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produção Ituram</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏍️</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --navy: #0B3C5D; --deep: #065A82; --teal: #1C7293; --amber: #E8A33D;
+    --red: #C0392B; --ink: #1E2A32; --muted: #5B6B76; --card: #FFFFFF;
+    --bg: #EEF3F7; --line: #D8E2EA;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Inter, system-ui, sans-serif; background: var(--bg);
+    min-height: 100vh; margin: 0; padding: 20px 22px 28px; color: var(--ink);
+  }
+  input:focus, button:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+
+  header { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 34px; font-weight: 700; letter-spacing: .04em; color: var(--navy); margin: 0; line-height: 1; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .status { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; font-weight: 600; }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status.online  { color: #1E7B4F; } .status.online  .dot { background: #1E7B4F; }
+  .status.demo    { color: var(--amber); } .status.demo .dot { background: var(--amber); }
+  .status.offline { color: var(--red); } .status.offline .dot { background: var(--red); }
+
+  .meta-box { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 10px; padding: 10px 14px; box-shadow: 0 2px 8px rgba(11,60,93,.10); }
+  .meta-label { font-size: 12.5px; font-weight: 600; }
+  .meta-value { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; color: var(--red); line-height: 1; }
+  .meta-unit { font-size: 12.5px; color: var(--muted); }
+
+  .banner { border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+  .banner.demo { display: block; background: #FDF3E3; color: #7A5510; border: 1px solid #F0D9A8; }
+  .banner.error { display: block; background: #FBEAE7; color: #8C2318; border: 1px solid #F0C4BC; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .kpi { background: var(--card); border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(11,60,93,.10); }
+  .kpi .big { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 40px; line-height: 1; }
+  .kpi .lbl { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+
+  .main-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
+  @media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(11,60,93,.10); min-width: 0; }
+  .panel-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  h2 { font-size: 15.5px; font-weight: 700; margin: 0; }
+  h3 { font-size: 13.5px; font-weight: 700; margin: 0 0 8px; }
+  .legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .legend .item { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .legend .meta-dash { width: 18px; border-top: 2px dashed var(--red); }
+
+  #chart-wrap { position: relative; width: 100%; height: 300px; }
+  #chart-tip {
+    position: absolute; display: none; pointer-events: none; z-index: 10;
+    background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; box-shadow: 0 4px 14px rgba(11,60,93,.15);
+    font-size: 12.5px; max-width: 230px;
+  }
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  form { display: flex; flex-direction: column; gap: 10px; }
+  .f-label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }
+  input[type=date], input[type=number], input[type=text] {
+    padding: 9px 10px; font-size: 14px; border: 1px solid var(--line);
+    border-radius: 8px; font-family: Inter, sans-serif; color: var(--ink); background: #FBFDFE;
+  }
+  .segment { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: #FBFDFE; }
+  .seg-btn { padding: 8px 0; font-size: 13.5px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; font-family: Inter, sans-serif; background: transparent; color: var(--ink); transition: background .15s; }
+  .seg-btn.on-A { background: var(--deep); color: #fff; }
+  .seg-btn.on-B { background: var(--teal); color: #fff; }
+  .primary-btn { margin-top: 2px; padding: 11px 0; font-size: 14.5px; font-weight: 700; color: #fff; background: var(--navy); border: none; border-radius: 9px; cursor: pointer; font-family: Inter, sans-serif; }
+  .primary-btn:disabled { opacity: .6; cursor: default; }
+  .delete-btn { padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--red); background: transparent; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; font-family: Inter, sans-serif; }
+  .msg-error { font-size: 12.5px; color: #8C2318; background: #FBEAE7; border-radius: 8px; padding: 8px 10px; }
+  .msg-flash { font-size: 12.5px; color: #1E5B38; background: #E6F4EC; border-radius: 8px; padding: 8px 10px; }
+  .weekday-hint { font-size: 12px; color: var(--muted); }
+
+  .team-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: 13px; }
+  .team-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; color: #fff; font-size: 12px; font-weight: 700; }
+  .team-badge.A { background: var(--deep); } .team-badge.B { background: var(--teal); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; padding: 8px 10px; }
+  td { padding: 9px 10px; vertical-align: middle; }
+  tbody tr { border-top: 1px solid var(--line); }
+  .meta-ok { color: #1E7B4F; font-weight: 600; } .meta-below { color: var(--red); }
+
+  #pin-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #pin-overlay .box { background: var(--card); border-radius: 12px; padding: 28px; box-shadow: 0 4px 20px rgba(11,60,93,.18); width: 320px; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONFIGURAÇÃO — preencha após criar o projeto no Supabase
+     (veja o passo a passo no arquivo LEIA-ME.md)
+     ============================================================ -->
+<script>
+  const SUPABASE_URL = "https://nytpnjtyvemrrotqewxq.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dHBuanR5dmVtcnJvdHFld3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMzQ0OTYsImV4cCI6MjA5ODYxMDQ5Nn0.vcp3uGHqi5tSq8kN_Z8O9kGlaz4VBsOV-Zds2Ic0o2w";
+  const ACCESS_PIN   = "";  // opcional: código de acesso (ex.: "ituram50"). Vazio = sem senha.
+  const META = 50;          // meta diária de motos
+</script>
+
+<div id="pin-overlay" style="display:none">
+  <div class="box">
+    <h1 style="font-size:26px">PRODUÇÃO ITURAM</h1>
+    <p style="font-size:13px;color:var(--muted)">Informe o código de acesso para abrir o painel.</p>
+    <input type="text" id="pin-input" placeholder="Código de acesso" style="width:100%;padding:9px 10px;font-size:14px;border:1px solid var(--line);border-radius:8px">
+    <button class="primary-btn" id="pin-btn" style="width:100%;margin-top:10px">Entrar</button>
+    <div id="pin-error" class="msg-error" style="display:none;margin-top:10px">Código incorreto.</div>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>PRODUÇÃO ITURAM</h1>
+    <div class="sub" id="subtitle">Painel de produção diária</div>
+    <div class="status" id="status"><span class="dot"></span><span id="status-text"></span></div>
+  </div>
+  <div class="meta-box">
+    <span class="meta-label">Meta diária</span>
+    <span class="meta-value" id="meta-value">50</span>
+    <span class="meta-unit">motos</span>
+  </div>
+</header>
+
+<div class="banner" id="banner"></div>
+
+<section class="kpi-row">
+  <div class="kpi"><div class="big" style="color:var(--navy)" id="kpi-total">—</div><div class="lbl">motos produzidas no período</div></div>
+  <div class="kpi"><div class="big" style="color:var(--deep)" id="kpi-media">—</div><div class="lbl">média por dia trabalhado</div></div>
+  <div class="kpi"><div class="big" style="color:var(--amber)" id="kpi-best">—</div><div class="lbl" id="kpi-best-lbl">recorde diário</div></div>
+  <div class="kpi"><div class="big" style="color:var(--teal)" id="kpi-meta">—</div><div class="lbl" id="kpi-meta-lbl">dias na meta ou acima</div></div>
+</section>
+
+<div class="main-grid">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Produção diária por equipe</h2>
+      <div class="legend">
+        <span class="item"><span class="swatch" style="background:var(--deep)"></span>Equipe A</span>
+        <span class="item"><span class="swatch" style="background:var(--teal)"></span>Equipe B</span>
+        <span class="item"><span class="meta-dash"></span>Meta (<span id="legend-meta">50</span>)</span>
+      </div>
+    </div>
+    <div id="chart-wrap">
+      <svg id="chart" width="100%" height="300"></svg>
+      <div id="chart-tip"></div>
+    </div>
+    <div class="hint">◆ = dia com observação (passe o cursor sobre a barra para ver o detalhe)</div>
+  </section>
+
+  <section class="panel">
+    <h2 style="margin-bottom:10px">Lançar produção do dia</h2>
+    <form id="form" onsubmit="return false">
+      <label class="f-label">Data
+        <input type="date" id="f-data">
+      </label>
+      <label class="f-label">Equipe
+        <div class="segment">
+          <button type="button" class="seg-btn on-A" id="seg-A">Equipe A</button>
+          <button type="button" class="seg-btn" id="seg-B">Equipe B</button>
+        </div>
+      </label>
+      <label class="f-label">Motos produzidas
+        <input type="number" id="f-prod" min="0" placeholder="ex.: 72">
+      </label>
+      <label class="f-label">Observação (opcional)
+        <input type="text" id="f-obs" placeholder="ex.: feriado, manutenção, jogo do Brasil…">
+      </label>
+      <div class="weekday-hint" id="weekday-hint"></div>
+      <button type="button" class="primary-btn" id="save-btn">Salvar produção</button>
+      <div class="msg-error" id="form-error" style="display:none"></div>
+      <div class="msg-flash" id="form-flash" style="display:none"></div>
+    </form>
+
+    <div style="margin-top:18px">
+      <h3>Comparativo por equipe</h3>
+      <div id="team-compare"></div>
+    </div>
+  </section>
+</div>
+
+<section class="panel" style="margin-top:14px">
+  <div class="panel-head">
+    <h2 id="table-title">Lançamentos</h2>
+  </div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Dia da semana</th><th>Equipe</th>
+          <th style="text-align:right">Motos</th><th>Meta</th><th>Observação</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+  <div class="hint" style="margin-top:10px" id="share-note">
+    Os dados são compartilhados: qualquer pessoa com acesso a este painel vê e edita os mesmos lançamentos.
+  </div>
+</section>
+
+<script>
+"use strict";
+
+// ---------- Dados iniciais (usados apenas no modo demonstração) ----------
+const SEED = [
+  ["A","2026-05-26",36,"1º dia equipe A"],["A","2026-05-27",52,""],["A","2026-05-28",53,""],["A","2026-05-29",64,""],
+  ["A","2026-06-01",69,""],["A","2026-06-02",71,""],["A","2026-06-03",76,""],["A","2026-06-04",0,"Feriado"],["A","2026-06-05",70,""],
+  ["B","2026-06-08",10,"1º dia equipe B"],["B","2026-06-09",52,""],["B","2026-06-10",57,""],["B","2026-06-11",76,""],["B","2026-06-12",71,""],
+  ["B","2026-06-15",67,""],["B","2026-06-16",61,""],["B","2026-06-17",49,""],["B","2026-06-18",43,""],["B","2026-06-19",58,""],
+  ["A","2026-06-22",70,""],["A","2026-06-23",71,""],["A","2026-06-24",91,""],["A","2026-06-25",79,""],["A","2026-06-26",71,""],
+  ["A","2026-06-29",45,"Jogo do Brasil"],["A","2026-06-30",82,""],["A","2026-07-01",80,""],["A","2026-07-02",90,""],
+].map(([equipe, data, prod, obs]) => ({ equipe, data, prod, obs }));
+
+const CONNECTED = Boolean(SUPABASE_URL && SUPABASE_KEY);
+const LOCAL_KEY = "ituram-producao-demo";
+
+// ---------- Utilidades ----------
+const $ = (id) => document.getElementById(id);
+const fmtBR = (n, dec = 0) => n.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const shortDate = (iso) => { const [, m, d] = iso.split("-"); return `${d}/${m}`; };
+const weekday = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long" });
+const longDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---------- Camada de dados ----------
+async function apiList() {
+  if (!CONNECTED) {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if (raw) return JSON.parse(raw);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(SEED));
+    return SEED.slice();
+  }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/producao?select=data,equipe,prod,obs&order=data.asc`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Erro ${res.status} ao carregar dados`);
+  return res.json();
+}
+
+async function apiUpsert(entry) {
+  if (!CONNECTED) {
+    const list = (await apiList()).filter((e) => e.data !== entry.data);
+    list.push(entry);
+    list.sort((a, b) => a.data.localeCompare(b.data));
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+    return;
+  }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/producao`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json", Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify([entry]),
+  });
+  if (!res.ok) throw new Error(`Erro ${res.status} ao salvar`);
+}
+
+async function apiDelete(data) {
+  if (!CONNECTED) {
+    const list = (await apiList()).filter((e) => e.data !== data);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+    return;
+  }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/producao?data=eq.${data}`, {
+    method: "DELETE",
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Erro ${res.status} ao excluir`);
+}
+
+// ---------- Estado ----------
+let entries = [];
+let fEquipe = "A";
+
+function setStatus(kind, text) {
+  const el = $("status");
+  el.className = `status ${kind}`;
+  $("status-text").textContent = text;
+}
+
+async function refresh({ silent = false } = {}) {
+  try {
+    entries = await apiList();
+    entries.sort((a, b) => a.data.localeCompare(b.data));
+    renderAll();
+    if (CONNECTED) setStatus("online", "Conectado — dados compartilhados com a equipe");
+    else {
+      setStatus("demo", "Modo demonstração — dados salvos só neste navegador");
+      const b = $("banner");
+      b.className = "banner demo";
+      b.textContent = "Painel em modo demonstração: preencha SUPABASE_URL e SUPABASE_KEY no início do arquivo para ativar o compartilhamento (instruções no LEIA-ME.md).";
+      $("share-note").textContent = "Modo demonstração: os lançamentos ficam salvos apenas neste navegador.";
+    }
+  } catch (err) {
+    setStatus("offline", "Sem conexão com o banco de dados");
+    if (!silent) {
+      const b = $("banner");
+      b.className = "banner error";
+      b.textContent = "Não foi possível carregar os dados. Verifique a internet e recarregue a página. (" + err.message + ")";
+    }
+  }
+}
+
+// ---------- Indicadores ----------
+function calcIndicators() {
+  const total = entries.reduce((s, e) => s + e.prod, 0);
+  const worked = entries.filter((e) => e.prod > 0);
+  const media = worked.length ? total / worked.length : 0;
+  const best = entries.reduce((b, e) => (e.prod > (b ? b.prod : -1) ? e : b), null);
+  const acima = entries.filter((e) => e.prod >= META).length;
+  const porEquipe = ["A", "B"].map((eq) => {
+    const sub = entries.filter((e) => e.equipe === eq);
+    const subW = sub.filter((e) => e.prod > 0);
+    const t = sub.reduce((s, e) => s + e.prod, 0);
+    return { eq, total: t, dias: sub.length, media: subW.length ? t / subW.length : 0 };
+  });
+  const periodo = entries.length
+    ? `${longDate(entries[0].data)} a ${longDate(entries[entries.length - 1].data)} de ${entries[entries.length - 1].data.slice(0, 4)}`
+    : "sem lançamentos";
+  return { total, media, best, acima, porEquipe, periodo, dias: entries.length };
+}
+
+// ---------- Renderização ----------
+function renderAll() {
+  const c = calcIndicators();
+  $("subtitle").textContent = `Painel de produção diária · ${c.periodo} · ${c.dias} dias lançados`;
+  $("meta-value").textContent = META;
+  $("legend-meta").textContent = META;
+
+  $("kpi-total").textContent = fmtBR(c.total);
+  $("kpi-media").textContent = fmtBR(c.media, 1);
+  $("kpi-best").textContent = c.best ? fmtBR(c.best.prod) : "—";
+  $("kpi-best-lbl").textContent = c.best
+    ? `recorde diário (${longDate(c.best.data)}, Equipe ${c.best.equipe})` : "recorde diário";
+  $("kpi-meta").textContent = `${c.acima}/${c.dias}`;
+  $("kpi-meta-lbl").textContent = `dias na meta de ${META} ou acima`;
+
+  $("team-compare").innerHTML = c.porEquipe.map((t) => `
+    <div class="team-row">
+      <span class="team-badge ${t.eq}">${t.eq}</span>
+      <span style="font-weight:600">${fmtBR(t.total)} motos</span>
+      <span style="color:var(--muted)">${t.dias} dias · média ${fmtBR(t.media, 1)}/dia</span>
+    </div>`).join("");
+
+  renderTable();
+  renderChart();
+}
+
+function renderTable() {
+  const rows = entries.slice().reverse().map((e) => `
+    <tr>
+      <td>${longDate(e.data)}</td>
+      <td style="color:var(--muted);text-transform:capitalize">${weekday(e.data)}</td>
+      <td><span class="team-badge ${e.equipe}">${e.equipe}</span></td>
+      <td style="text-align:right;font-weight:600">${fmtBR(e.prod)}</td>
+      <td>${e.prod >= META ? '<span class="meta-ok">✓ atingida</span>' : '<span class="meta-below">abaixo</span>'}</td>
+      <td style="color:var(--muted);font-style:${e.obs ? "italic" : "normal"}">${e.obs ? esc(e.obs) : "—"}</td>
+      <td style="text-align:right"><button class="delete-btn" data-del="${e.data}">Excluir</button></td>
+    </tr>`).join("");
+  $("table-body").innerHTML = rows || `
+    <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:24px">
+      Nenhum lançamento ainda. Use o formulário acima para registrar a produção do dia.
+    </td></tr>`;
+  $("table-title").textContent = `Lançamentos (${entries.length})`;
+}
+
+// ---------- Gráfico (SVG) ----------
+function renderChart() {
+  const svg = $("chart");
+  const wrap = $("chart-wrap");
+  const W = wrap.clientWidth || 600, H = 300;
+  const m = { top: 18, right: 8, bottom: 48, left: 34 };
+  const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+  if (!entries.length) { svg.innerHTML = ""; return; }
+
+  const maxProd = Math.max(...entries.map((e) => e.prod));
+  const yMax = Math.max(100, Math.ceil(maxProd / 10) * 10);
+  const y = (v) => m.top + plotH - (v / yMax) * plotH;
+  const n = entries.length;
+  const slot = plotW / n;
+  const barW = Math.min(26, slot * 0.72);
+  const xC = (i) => m.left + slot * i + slot / 2;
+
+  let out = "";
+
+  // Faixas de fundo (blocos da equipe B)
+  let blockStart = null;
+  entries.forEach((e, i) => {
+    if (e.equipe === "B" && blockStart === null) blockStart = i;
+    const endOfBlock = blockStart !== null && (e.equipe !== "B" || i === n - 1);
+    if (endOfBlock) {
+      const last = e.equipe === "B" ? i : i - 1;
+      out += `<rect x="${m.left + slot * blockStart}" y="${m.top}" width="${slot * (last - blockStart + 1)}" height="${plotH}" fill="#1C7293" opacity="0.07"/>`;
+      blockStart = null;
+    }
+  });
+
+  // Grade e eixo Y
+  const step = Math.max(10, Math.ceil(yMax / 5 / 10) * 10);
+  for (let v = 0; v <= yMax; v += step) {
+    out += `<line x1="${m.left}" x2="${W - m.right}" y1="${y(v)}" y2="${y(v)}" stroke="#D8E2EA"/>`;
+    out += `<text x="${m.left - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="#5B6B76">${v}</text>`;
+  }
+
+  // Barras + rótulos + marcador de observação
+  entries.forEach((e, i) => {
+    const bx = xC(i) - barW / 2, by = y(e.prod), bh = m.top + plotH - by;
+    const color = e.equipe === "A" ? "#065A82" : "#1C7293";
+    out += `<path d="M${bx},${by + 3} q0,-3 3,-3 h${barW - 6} q3,0 3,3 v${Math.max(bh - 3, 0)} h${-barW} z" fill="${color}" data-i="${i}" class="bar" style="cursor:pointer"/>`;
+    if (e.obs) out += `<text x="${xC(i)}" y="${by - 6}" text-anchor="middle" font-size="9" fill="#E8A33D">◆</text>`;
+    out += `<text x="${xC(i)}" y="${m.top + plotH + 8}" text-anchor="end" font-size="9" fill="#5B6B76" transform="rotate(-90 ${xC(i)} ${m.top + plotH + 8})">${shortDate(e.data)}</text>`;
+  });
+
+  // Linha da meta
+  out += `<line x1="${m.left}" x2="${W - m.right}" y1="${y(META)}" y2="${y(META)}" stroke="#C0392B" stroke-width="1.6" stroke-dasharray="6 4"/>`;
+
+  svg.innerHTML = out;
+
+  // Tooltip
+  const tip = $("chart-tip");
+  svg.querySelectorAll(".bar").forEach((bar) => {
+    bar.addEventListener("mouseenter", () => {
+      const e = entries[Number(bar.dataset.i)];
+      tip.innerHTML = `
+        <div style="font-weight:700">${longDate(e.data)} · <span style="text-transform:capitalize">${weekday(e.data)}</span></div>
+        <div style="margin-top:4px">Equipe ${e.equipe} — <b>${fmtBR(e.prod)} motos</b>
+          <span style="color:${e.prod >= META ? "#1E7B4F" : "#C0392B"}">(${e.prod >= META ? "meta atingida" : "abaixo da meta"})</span>
+        </div>
+        ${e.obs ? `<div style="margin-top:4px;color:#5B6B76;font-style:italic">◆ ${esc(e.obs)}</div>` : ""}`;
+      tip.style.display = "block";
+      const r = bar.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      let left = r.left - wr.left + r.width / 2 + 10;
+      if (left + 230 > wr.width) left = r.left - wr.left - 240;
+      tip.style.left = Math.max(0, left) + "px";
+      tip.style.top = Math.max(0, r.top - wr.top - 10) + "px";
+    });
+    bar.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  });
+}
+
+// ---------- Formulário ----------
+function setEquipe(eq) {
+  fEquipe = eq;
+  $("seg-A").className = "seg-btn" + (eq === "A" ? " on-A" : "");
+  $("seg-B").className = "seg-btn" + (eq === "B" ? " on-B" : "");
+}
+$("seg-A").addEventListener("click", () => setEquipe("A"));
+$("seg-B").addEventListener("click", () => setEquipe("B"));
+
+$("f-data").addEventListener("input", () => {
+  const d = $("f-data").value;
+  if (!d) { $("weekday-hint").textContent = ""; return; }
+  let txt = weekday(d);
+  if (entries.some((e) => e.data === d)) txt += " — já existe lançamento nesta data; salvar irá substituí-lo.";
+  $("weekday-hint").textContent = txt;
+});
+
+function showFormMsg(id, msg) {
+  const el = $(id);
+  el.textContent = msg;
+  el.style.display = "block";
+  if (id === "form-flash") setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+$("save-btn").addEventListener("click", async () => {
+  $("form-error").style.display = "none";
+  const data = $("f-data").value;
+  const prodRaw = $("f-prod").value;
+  const qtd = Number(prodRaw);
+  if (!data) { showFormMsg("form-error", "Informe a data da produção."); return; }
+  if (prodRaw === "" || Number.isNaN(qtd) || qtd < 0) {
+    showFormMsg("form-error", "Informe a quantidade de motos (0 ou mais).");
+    return;
+  }
+  const existed = entries.some((e) => e.data === data);
+  const btn = $("save-btn");
+  btn.disabled = true; btn.textContent = "Salvando…";
+  try {
+    await apiUpsert({ data, equipe: fEquipe, prod: Math.round(qtd), obs: $("f-obs").value.trim() });
+    await refresh({ silent: true });
+    showFormMsg("form-flash", existed
+      ? `Lançamento de ${longDate(data)} atualizado: ${qtd} motos.`
+      : `Produção de ${longDate(data)} registrada: ${qtd} motos.`);
+    $("f-prod").value = ""; $("f-obs").value = ""; $("weekday-hint").textContent = "";
+  } catch (err) {
+    showFormMsg("form-error", "Não foi possível salvar. Verifique a conexão e tente novamente.");
+  } finally {
+    btn.disabled = false; btn.textContent = "Salvar produção";
+  }
+});
+
+document.addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("[data-del]");
+  if (!btn) return;
+  const data = btn.dataset.del;
+  if (!confirm(`Excluir o lançamento de ${longDate(data)}? Essa ação vale para todos que usam o painel.`)) return;
+  try {
+    await apiDelete(data);
+    await refresh({ silent: true });
+    showFormMsg("form-flash", `Lançamento de ${longDate(data)} excluído.`);
+  } catch {
+    showFormMsg("form-error", "Não foi possível excluir. Tente novamente.");
+  }
+});
+
+// ---------- Código de acesso (opcional) ----------
+function initPin() {
+  if (!ACCESS_PIN || sessionStorage.getItem("ituram-pin-ok") === "1") return;
+  const overlay = $("pin-overlay");
+  overlay.style.display = "flex";
+  const tryPin = () => {
+    if ($("pin-input").value.trim() === ACCESS_PIN) {
+      sessionStorage.setItem("ituram-pin-ok", "1");
+      overlay.style.display = "none";
+    } else {
+      $("pin-error").style.display = "block";
+    }
+  };
+  $("pin-btn").addEventListener("click", tryPin);
+  $("pin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") tryPin(); });
+}
+
+// ---------- Inicialização ----------
+initPin();
+refresh();
+window.addEventListener("resize", renderChart);
+window.addEventListener("focus", () => refresh({ silent: true }));
+if (CONNECTED) setInterval(() => refresh({ silent: true }), 60000);
+</script>
+</body>
+</html>
