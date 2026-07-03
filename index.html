@@ -53,6 +53,34 @@
   .main-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
   @media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } }
 
+  @media (max-width: 600px) {
+    body { padding: 14px 12px 20px; }
+    h1 { font-size: 24px; }
+    .sub { font-size: 11.5px; }
+    .logo-chip { padding: 6px 10px; }
+    .logo-chip img { height: 32px; }
+    header { gap: 10px; margin-bottom: 12px; }
+    .meta-box { padding: 8px 10px; gap: 6px; }
+    .meta-value { font-size: 20px; }
+    #user-box { padding: 8px 10px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .kpi { padding: 12px 12px; }
+    .kpi .big { font-size: 30px; }
+    .kpi .lbl { font-size: 11px; }
+    .panel { padding: 12px 13px; }
+    .tab-btn { padding: 9px 12px; font-size: 12.5px; }
+    .filter-bar { font-size: 12px; gap: 6px; }
+    .filter-bar input[type=date] { padding: 6px 6px; flex: 1 1 auto; min-width: 0; }
+    #chart-wrap, #chart-month-wrap { overflow-x: auto; }
+    #chart, #chart-month { display: block; }
+    .segment { gap: 3px; }
+    .seg-btn { padding: 11px 0; font-size: 13px; }
+    .primary-btn { padding: 13px 0; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 6px; }
+    #watermark { width: min(52vw, 300px); opacity: .07; }
+  }
+
   .panel { background: var(--card); border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(11,60,93,.10); min-width: 0; }
   .panel-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   h2 { font-size: 15.5px; font-weight: 700; margin: 0; }
@@ -123,7 +151,8 @@
   #tab-docs h3:first-of-type { margin-top: 4px; }
   .doc-p { font-size: 13px; line-height: 1.6; color: var(--ink); margin: 0 0 10px; }
   .doc-p code, .doc-table code { background: #EEF3F7; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-  .doc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 10px; }
+  .table-scroll { overflow-x: auto; margin-bottom: 10px; }
+  .doc-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 12.5px; }
   .doc-table th, .doc-table td { text-align: left; padding: 7px 10px; border: 1px solid var(--line); vertical-align: top; }
   .doc-table th { background: #F5F8FA; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 </style>
@@ -325,14 +354,14 @@
   </p>
 
   <h3>2. Perfis e permissões</h3>
-  <table class="doc-table">
+  <div class="table-scroll"><table class="doc-table">
     <thead><tr><th>Perfil</th><th>Consultar</th><th>Lançar</th><th>Editar dia existente</th><th>Excluir</th></tr></thead>
     <tbody>
       <tr><td><b>Administrador</b></td><td>Sim</td><td>Sim</td><td>Sim</td><td>Sim</td></tr>
       <tr><td><b>Armazém</b></td><td>Sim</td><td>Sim (dia novo)</td><td>Não</td><td>Não</td></tr>
       <tr><td><b>Visitante</b></td><td>Sim</td><td>Não</td><td>Não</td><td>Não</td></tr>
     </tbody>
-  </table>
+  </table></div>
   <p class="doc-p">
     A permissão é aplicada em dois níveis: na tela (esconde formulário e botões para quem não pode usá-los)
     e, o que realmente importa para a segurança, no banco de dados via <b>Row Level Security</b> do Supabase —
@@ -341,7 +370,7 @@
   </p>
 
   <h3>3. Memória de cálculo dos indicadores</h3>
-  <table class="doc-table">
+  <div class="table-scroll"><table class="doc-table">
     <tbody>
       <tr><td><b>Motos produzidas no período</b></td><td>Soma de <code>prod</code> de todos os lançamentos dentro do período filtrado.</td></tr>
       <tr><td><b>Média por dia trabalhado</b></td><td>Soma total ÷ quantidade de dias com <code>prod &gt; 0</code> (dias com feriado/parada em 0 não entram na média).</td></tr>
@@ -352,7 +381,7 @@
       <tr><td><b>Gráfico mensal</b></td><td>Lançamentos agrupados por competência (ano-mês); barra empilhada com o total da Equipe A embaixo e Equipe B em cima. O número acima da barra é a soma do mês.</td></tr>
       <tr><td><b>Filtro de período</b></td><td>Recalcula tudo acima (KPIs, gráfico diário, comparativo) considerando apenas <code>data ≥ início</code> e <code>data ≤ fim</code> quando preenchidos. O gráfico mensal e a tabela de lançamentos não são afetados pelo filtro — mostram sempre o histórico completo.</td></tr>
     </tbody>
-  </table>
+  </table></div>
 
   <h3>4. Regra de negócio: um lançamento por dia</h3>
   <p class="doc-p">
@@ -371,7 +400,7 @@
   </p>
 
   <h3>6. Arquitetura e arquivos do projeto</h3>
-  <table class="doc-table">
+  <div class="table-scroll"><table class="doc-table">
     <tbody>
       <tr><td><code>index.html</code></td><td>O painel inteiro (HTML + CSS + JavaScript puro, sem frameworks). É o único arquivo publicado no site.</td></tr>
       <tr><td><code>setup-supabase.sql</code></td><td>Cria a tabela <code>producao</code> e importa o histórico original da planilha.</td></tr>
@@ -379,7 +408,7 @@
       <tr><td><code>setup-email.sql</code></td><td>Cria o gatilho de notificação por e-mail. <b>Contém uma chave de API — nunca deve ser enviado ao repositório público do GitHub.</b></td></tr>
       <tr><td><code>LEIA-ME.md</code></td><td>Guia de configuração inicial (Supabase, publicação, perguntas frequentes).</td></tr>
     </tbody>
-  </table>
+  </table></div>
   <p class="doc-p">
     Gráficos (diário e mensal) são desenhados em SVG puro, sem biblioteca externa. Dados trafegam
     diretamente entre o navegador e a API REST do Supabase (<code>fetch</code>), autenticados com o
@@ -396,7 +425,7 @@
   </p>
 
   <h3>8. Histórico de evolução</h3>
-  <table class="doc-table">
+  <div class="table-scroll"><table class="doc-table">
     <tbody>
       <tr><td>02/07/2026</td><td>Painel criado a partir de uma proposta em React/JSX; reescrito em HTML+JS puro e conectado ao Supabase para dados compartilhados entre colaboradores.</td></tr>
       <tr><td>02/07/2026</td><td>Publicado no GitHub Pages. Logo oficial da Ituran incorporada; gráfico diário sem eixo vertical e com rótulo de dados; filtro de período; gráfico mensal; marca-d'água de moto ao fundo.</td></tr>
@@ -404,8 +433,9 @@
       <tr><td>02/07/2026</td><td>Notificação automática por e-mail ao administrador quando o armazém lança produção nova.</td></tr>
       <tr><td>02/07/2026</td><td>Botão de mostrar/ocultar senha na tela de login; esta aba de documentação técnica, visível apenas ao Administrador.</td></tr>
       <tr><td>03/07/2026</td><td>Marca-d'água trocada de silhueta desenhada para foto real de uma moto BMW (S1000RR), com crédito da licença Creative Commons no rodapé.</td></tr>
+      <tr><td>03/07/2026</td><td>Ajustes de responsividade para celular: cabeçalho, KPIs, gráficos e tabelas adaptados para telas pequenas.</td></tr>
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <!-- Foto de fundo: BMW S1000RR, por Stefan Krause (www.defd.de / Wikimedia Commons User:Ritchyblack).
@@ -660,15 +690,23 @@ function renderChart() {
   const svg = $("chart");
   const wrap = $("chart-wrap");
   const list = viewEntries();
-  const W = wrap.clientWidth || 600, H = 300;
+  const H = 300;
   const m = { top: 26, right: 8, bottom: 48, left: 8 };
-  const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const containerW = wrap.clientWidth || 600;
 
   if (!list.length) {
-    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="#5B6B76">Nenhum lançamento no período selecionado.</text>`;
+    svg.style.width = "100%";
+    svg.setAttribute("viewBox", `0 0 ${containerW} ${H}`);
+    svg.innerHTML = `<text x="${containerW / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="#5B6B76">Nenhum lançamento no período selecionado.</text>`;
     return;
   }
+
+  // Em telas pequenas, garante uma largura mínima por barra (rolagem horizontal) em vez de espremer tudo
+  const minSlot = window.innerWidth <= 600 ? 26 : 0;
+  const W = Math.max(containerW, m.left + m.right + list.length * minSlot);
+  const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.style.width = W + "px";
 
   const maxProd = Math.max(...list.map((e) => e.prod));
   const yMax = Math.max(100, Math.ceil(maxProd / 10) * 10);
@@ -739,12 +777,16 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 function renderMonthChart() {
   const svg = $("chart-month");
   const wrap = $("chart-month-wrap");
-  const W = wrap.clientWidth || 600, H = 230;
+  const H = 230;
   const m = { top: 30, right: 8, bottom: 24, left: 8 };
-  const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const containerW = wrap.clientWidth || 600;
 
-  if (!entries.length) { svg.innerHTML = ""; return; }
+  if (!entries.length) {
+    svg.style.width = "100%";
+    svg.setAttribute("viewBox", `0 0 ${containerW} ${H}`);
+    svg.innerHTML = "";
+    return;
+  }
 
   const groups = {};
   entries.forEach((e) => {
@@ -760,6 +802,13 @@ function renderMonthChart() {
     const [ano, mes] = k.split("-");
     return { k, ...g, total: g.A + g.B, label: `${MESES[Number(mes) - 1]}/${ano.slice(2)}` };
   });
+
+  // Em telas pequenas, garante uma largura mínima por mês (rolagem horizontal) em vez de espremer tudo
+  const minSlot = window.innerWidth <= 600 ? 78 : 0;
+  const W = Math.max(containerW, m.left + m.right + months.length * minSlot);
+  const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.style.width = W + "px";
 
   const yMax = Math.max(...months.map((x) => x.total)) || 1;
   const scale = (v) => (v / yMax) * (plotH - 14); // 14px de folga p/ o rótulo
