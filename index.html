@@ -119,6 +119,7 @@
   .team-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: 13px; }
   .team-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; color: #fff; font-size: 12px; font-weight: 700; }
   .team-badge.A { background: var(--deep); } .team-badge.B { background: var(--teal); }
+  .month-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; height: 22px; padding: 0 8px; border-radius: 6px; color: #fff; font-size: 11.5px; font-weight: 700; text-transform: capitalize; background: var(--navy); }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; padding: 8px 10px; }
@@ -311,11 +312,17 @@
     <div id="chart-month-tip"></div>
   </div>
   <div class="hint">Total de motos por mês (passe o cursor sobre a barra para ver o detalhe)</div>
+
+  <div style="margin-top:16px">
+    <h3>Comparativo por mês</h3>
+    <div id="month-compare"></div>
+  </div>
 </section>
 
 <section class="panel" style="margin-top:14px">
   <div class="panel-head">
     <h2 id="table-title">Lançamentos</h2>
+    <button type="button" class="ghost-btn" id="export-btn">Exportar para Excel</button>
   </div>
   <div style="overflow-x:auto">
     <table>
@@ -785,6 +792,7 @@ function renderMonthChart() {
     svg.style.width = "100%";
     svg.setAttribute("viewBox", `0 0 ${containerW} ${H}`);
     svg.innerHTML = "";
+    $("month-compare").innerHTML = "";
     return;
   }
 
@@ -802,6 +810,13 @@ function renderMonthChart() {
     const [ano, mes] = k.split("-");
     return { k, ...g, total: g.A + g.B, label: `${MESES[Number(mes) - 1]}/${ano.slice(2)}` };
   });
+
+  $("month-compare").innerHTML = months.map((mo) => `
+    <div class="team-row">
+      <span class="month-badge">${mo.label}</span>
+      <span style="font-weight:600">${fmtBR(mo.total)} motos</span>
+      <span style="color:var(--muted)">${mo.dias} dias · média ${fmtBR(mo.trab ? mo.total / mo.trab : 0, 1)}/dia</span>
+    </div>`).join("");
 
   // Em telas pequenas, garante uma largura mínima por mês (rolagem horizontal) em vez de espremer tudo
   const minSlot = window.innerWidth <= 600 ? 78 : 0;
@@ -854,6 +869,37 @@ $("filtro-fim").addEventListener("input", renderAll);
 $("filtro-limpar").addEventListener("click", () => {
   $("filtro-ini").value = ""; $("filtro-fim").value = "";
   renderAll();
+});
+
+// ---------- Exportar para Excel (CSV) ----------
+function csvCell(v) {
+  const s = String(v ?? "");
+  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+$("export-btn").addEventListener("click", () => {
+  const linhas = [["Data", "Dia da semana", "Equipe", "Motos", "Meta", "Observação"]];
+  entries.forEach((e) => {
+    const dataBR = new Date(e.data + "T12:00:00").toLocaleDateString("pt-BR");
+    linhas.push([
+      dataBR,
+      weekday(e.data),
+      e.equipe,
+      e.prod,
+      e.prod >= META ? "Atingida" : "Abaixo",
+      e.obs || "",
+    ]);
+  });
+  const csv = linhas.map((l) => l.map(csvCell).join(";")).join("\r\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const hoje = new Date().toLocaleDateString("pt-BR").split("/").reverse().join("-");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `producao-ituram-${hoje}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 
 // ---------- Formulário ----------
